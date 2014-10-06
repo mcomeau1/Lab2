@@ -23,6 +23,12 @@ void KeypadInitialize() {
         //Default pins to digital where neccessary.
         AD1PCFGbits.PCFG2   = 1;
 
+        //Enable Open Drain Configuration for neccessary pins.
+        ODCBbits.ODB8       = 1;
+        ODCBbits.ODB9       = 1;
+        ODCBbits.ODB10      = 1;
+        ODCBbits.ODB11      = 1;
+
         //Enable the change notification for inputs
         CNEN1bits.CN6IE     = 1;
         CNEN2bits.CN24IE    = 1;

@@ -46,11 +46,14 @@ int main(void)
 	KeypadInitialize();
 	
 	// TODO: Initialize scanKeypad variable.
+        scanKeypad = 0;
 	
 	while(1)
 	{
 		// TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
 		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
+                IFS1bits.CNIF = 0;
+                IEC1bits.CNIE = 1;
 		
 		if( scanKeypad == 1 ) {
 			key = KeypadScan();
@@ -81,8 +84,11 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 	// TODO: Clear interrupt flag
 	IFS1bits.CNIF = 0;
 	
-	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
+	// TODO: Detect if *any* key of the keypad is *pressed*, update scanKeypad
 	// variable to indicate keypad scanning process must be executed.
+        if ((PORTBbits.RB2 == 0) || (PORTBbits.RB6 == 0) || (PORTBbits.RB7 == 0)) {
+            scanKeypad = 1;
+        }
 }
 
 // ******************************************************************************************* //
