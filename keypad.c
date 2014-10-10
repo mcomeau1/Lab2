@@ -20,6 +20,9 @@ void KeypadInitialize() {
         TRISBbits.TRISB10   = 0;
         TRISBbits.TRISB11   = 0;
 
+        //Set output high initially.
+        LATB = (LATB & 0xF1FF) | 0x0000;
+
         //Default pins to digital where neccessary.
         AD1PCFGbits.PCFG2   = 1;
 
@@ -62,6 +65,77 @@ char KeypadScan() {
 	//           is processed. This is to prevent invalid keypress from being processed if the 
 	//           users presses multiple keys simultaneously.
 	//
+
+        int i = 0;
+        int j = 0;
+        int numRows = 4;
+        int numCols = 3;
+        char keys[3][4] = {
+                            {'1','2','3'},
+                            {'4','5','6'},
+                            {'7','8','9'},
+                            {'#','0','*'}
+                            };
+        long groundedBits = 0xF7FF;
+
+        // The outer loop will represent the four rows of the keypad
+        for (i = 0; i < numRows; i++) {
+
+            // When the row of the keypad is grounded pressing
+            // a button in that row will pull the input pin
+            // from high to low, thus indicating a button press.
+            //
+            // To ground the row I've created a "long" variable
+            // named groundedBits which has a 1 for every bit
+            // accept for the pin that we want grounded. I've
+            // initialized groundedBits to 1111 0111 1111 1111
+            // so that RB11 is grounded. at the end of each loop
+            // the bits will be shifted to the right so that RB10,
+            // RB9, and RB8 will be grounded in that order.
+            //
+            // You can't just "or" grounded bits with LATB though
+            // without causing changes to the other PORTB pins.
+            // To fixed this I applied masks to both LATB and
+            // grounded bits so that only the desired pins are
+            // changed.
+            LATB = (LATB & 0xF0FF) | (groundedBits & 0x0F00);
+
+            // The inner loop represents the three columns of the keypad
+            for (j = 0; j < numCols; j++) {
+
+                // The following ties the column to its input pin
+                switch (j) {
+                    // If we are scanning the first column we want
+                    // to know if RB2 equals 0. If so we know that
+                    // the button on this row and this column was
+                    // pressed. We will return that key which is found
+                    // in the keys array.
+                    case 0:
+                        if(PORTBbits.RB2 == 0) {
+                            key == keys[i][j];
+                        }
+                        break;
+                    // When scanning the second column we want to know
+                    // if RB6 equals 0
+                    case 1:
+                        if(PORTBbits.RB6 == 0) {
+                            key == keys[i][j];
+                        }
+                        break;
+                    // When scanning the third column we want to know
+                    // if RB7 equals 0
+                    case 2:
+                        if(PORTBbits.RB7 == 0) {
+                            key == keys[i][j];
+                        }
+                        break;
+                }
+            }
+            // Shift grounded bits to the left so that
+            // the next row will be scanned in the next loop.
+            groundedBits = groundedBits >> 1;
+        }
+
 	return key;
 }
 
