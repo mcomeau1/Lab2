@@ -16,7 +16,7 @@ void KeypadInitialize() {
         TRISBbits.TRISB6    = 1;
         TRISBbits.TRISB7    = 1;
         TRISBbits.TRISB8    = 0;
-        TRISBbits.TRISB9    = 0;
+        TRISBbits.TRISB5    = 0;
         TRISBbits.TRISB10   = 0;
         TRISBbits.TRISB11   = 0;
 
@@ -33,7 +33,7 @@ void KeypadInitialize() {
 
         //Enable Open Drain Configuration for neccessary pins.
         ODCBbits.ODB8       = 1;
-        ODCBbits.ODB9       = 1;
+        ODCBbits.ODB5       = 1;
         ODCBbits.ODB10      = 1;
         ODCBbits.ODB11      = 1;
 
@@ -97,7 +97,7 @@ char KeypadScan() {
             // initialized groundedBits to 1111 0111 1111 1111
             // so that RB11 is grounded. at the end of each loop
             // the bits will be shifted to the right so that RB10,
-            // RB9, and RB8 will be grounded in that order.
+            // RB5, and RB8 will be grounded in that order.
             //
             // You can't just "or" grounded bits with LATB though
             // without causing changes to the other PORTB pins.
