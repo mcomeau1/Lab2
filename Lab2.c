@@ -116,10 +116,14 @@ int main(void)
 	
 	while(1)
 	{
-		// TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
-		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
-                IFS1bits.CNIF = 0;
-                IEC1bits.CNIE = 1;
+            // TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
+            // the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
+            IFS1bits.CNIF = 0;
+            IEC1bits.CNIE = 1;
+
+            if (scanKeypad == 1) {
+
+                key = KeypadScan();
 
                 switch (state) {
                     case EnterAndWait:
@@ -182,12 +186,20 @@ int main(void)
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Good");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case PrintBad:
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Bad");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case Delay:
@@ -256,24 +268,25 @@ int main(void)
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Invalid");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case PrintValid:
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Valid");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                 }
-
-		if( scanKeypad == 1 ) {
-			key = KeypadScan();
-			if( key != -1 ) {
-				LCDMoveCursor(0,0);		
-				LCDPrintChar(key);
-			}
-			scanKeypad = 0;
-		}		
+            }
+            scanKeypad = 0;
 	}
 	return 0;
 }
