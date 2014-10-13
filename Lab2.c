@@ -45,7 +45,6 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 // and the KeypadScan() function needs to be called.
 
 volatile char scanKeypad;
-volatile long counter;
 
 // ******************************************************************************************* //
 // Type definition used in main for a switch statement
@@ -74,6 +73,7 @@ void Delay2s(){
     T2CONbits.TON = 1;
 
     while(IFS0bits.T3IF == 0);
+    T2CONbits.TON = 0;
     return;
 }
 
@@ -305,8 +305,7 @@ int main(void)
 // to ensure additional interrupts can be processed.
 void _ISR _T3Interrupt(void)
 {
-	IFS0bits.T3IF = 0;                                          //Clear Timer1 Flag
-        counter++;
+	IFS0bits.T3IF = 0;
 }
 
 // ******************************************************************************************* //
