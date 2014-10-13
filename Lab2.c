@@ -6,6 +6,7 @@
 #include "p24fj64ga002.h"
 #include <stdio.h>
 #include "lcd.h"
+#include "keypad.h"
 
 // ******************************************************************************************* //
 // Configuration bits for CONFIG1 settings. 
@@ -34,10 +35,39 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 volatile char scanKeypad;
 
 // ******************************************************************************************* //
+// Type definition used in main for a switch statement
+typedef enum stateTypeEnum {
+    EnterAndWait,
+    PrintCharacter,
+    CheckPassword,
+    PrintGood,
+    PrintBad,
+    Delay,
+    FirstStar,
+    EnterProgramMode,
+    VerifyNumDigits,
+    PrintInvalid,
+    PrintValid
+} stateType;
+
+volatile stateType state = EnterAndWait;
+
+// ******************************************************************************************* //
 
 int main(void)
 {
-	char key;
+	char key;                                       //Holds the key pressed or -1
+        char pwdDB[4][4] = {{'1','2','3','4'},          //Password Database and Default pw
+                            {NULL, NULL, NULL, NULL},
+                            {NULL, NULL, NULL, NULL},
+                            {NULL, NULL, NULL, NULL}
+                            };
+        char userPwd[4] = {NULL, NULL, NULL, NULL};     //Holds the password the user
+        int i = 0;                                      //Loop variable
+        int j = 0;                                      //Need two loop variables for pwdDB
+        int match = 0;                                  //1 -> pwd found 0 -> pwd not found
+        int numPwds = 0;                                //Tracks the number of passwords
+        int digitCount = 0;                             //Counts the number of digits entered
 	
 	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1), 
 	// UART (if desired for debugging), and any other configurations that are needed.
@@ -54,7 +84,74 @@ int main(void)
 		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
                 IFS1bits.CNIF = 0;
                 IEC1bits.CNIE = 1;
-		
+
+                switch (state) {
+                    case EnterAndWait:
+                        LCDMoveCursor(0,0);
+                        LCDPrintString("Enter");
+                        if ((key != -1) && (key != '#') && (key != '*')) {
+                            userPwd[digitCount] = key;
+                            LCDMoveCursor(1,digitCount);
+                            state = PrintCharacter;
+                        }
+                        else if (key == "#") {
+                            state = PrintBad;
+                        }
+                        else if (key == "*") {
+                            state = FirstStar;
+                        }
+                        break;
+                    case PrintCharacter:
+                        LCDPrintChar(key);
+                        digitCount++;
+                        if (digitCount < 3) {
+                            state = EnterAndWait;
+                        }
+                        else {
+                            digitCount = 0;
+                            state = CheckPassword;
+                        }
+                        break;
+                    case CheckPassword:
+                        for (i = 0; i < numPwds; i++) {
+                            for(j = 0; j < 4; j++) {
+                                if (pwdDB[i][j] != userPwd[j]) {
+                                    match = 0;
+                                }
+                                else {
+                                    match = 1;
+                                }
+                            }
+                        }
+                        if (match == 1) {
+                            state = PrintGood;
+                        }
+                        else {
+                            state = PrintBad;
+                        }
+                        break;
+                    case PrintGood:
+                        LCDClear();
+                        LCDMoveCursor(0,0);
+                        LCDPrintString("Good");
+                        state = Delay;
+                        break;
+                    case PrintBad:
+                        break;
+                    case Delay:
+                        break;
+                    case FirstStar:
+                        break;
+                    case EnterProgramMode:
+                        break;
+                    case VerifyNumDigits:
+                        break;
+                    case PrintInvalid:
+                        break;
+                    case PrintValid:
+                        break;
+                }
+
 		if( scanKeypad == 1 ) {
 			key = KeypadScan();
 			if( key != -1 ) {
