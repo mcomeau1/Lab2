@@ -116,10 +116,14 @@ int main(void)
 	
 	while(1)
 	{
-		// TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
-		// the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
-                IFS1bits.CNIF = 0;
-                IEC1bits.CNIE = 1;
+            // TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
+            // the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
+            IFS1bits.CNIF = 0;
+            IEC1bits.CNIE = 1;
+
+            if (scanKeypad == 1) {
+
+                key = KeypadScan();
 
                 switch (state) {
                     case EnterAndWait:
@@ -280,7 +284,9 @@ int main(void)
                         digitCount = 0;
                         state = Delay;
                         break;
-                }		
+                }
+            }
+            scanKeypad = 0;
 	}
 	return 0;
 }
