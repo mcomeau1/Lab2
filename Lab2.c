@@ -134,21 +134,21 @@ int main(void)
                             LCDMoveCursor(1,digitCount);
                             state = PrintCharacter;
                         }
-                        else if (key == "#") {
+                        else if (key == '#') {
                             LCDMoveCursor(1,digitCount);
-                            LCDPrintChar("#");
+                            LCDPrintChar('#');
                             digitCount = 0;
                             state = PrintBad;
                         }
-                        else if (key == "*" && digitCount > 1) {
+                        else if (key == '*' && digitCount > 1) {
                             LCDMoveCursor(1,digitCount);
-                            LCDPrintChar("#");
+                            LCDPrintChar('#');
                             digitCount = 0;
                             state = PrintBad;
                         }
-                        else if (key == "*") {
+                        else if (key == '*') {
                             LCDMoveCursor(1,0);
-                            LCDPrintChar("*");
+                            LCDPrintChar('*');
                             digitCount++;
                             state = FirstStar;
                         }
@@ -246,7 +246,7 @@ int main(void)
                         break;
                     case VerifyNumDigits:
                         for (i = 0; i < 4; i++) {
-                            if (userPwd[i] == NULL && userPwd != '#' && userPwd != '*') {
+                            if (userPwd[i] == NULL && userPwd[i] != '#' && userPwd[i] != '*') {
                                 pwdNumDigits++;
                             }
                         }
