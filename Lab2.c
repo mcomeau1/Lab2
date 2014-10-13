@@ -28,11 +28,24 @@ _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & O
 		 IOL1WAY_OFF & I2C1SEL_PRI & POSCMOD_XT )
 
 // ******************************************************************************************* //
+// Define constants to be used in this program.
+
+// Defines to simply UART's baud rate generator (BRG) regiser
+// given the osicllator freqeuncy and PLLMODE.
+#define XTFREQ          7372800         	  // On-board Crystal frequency
+#define PLLMODE         4               	  // On-chip PLL setting (Fosc)
+#define FCY             (XTFREQ*PLLMODE)/2        // Instruction Cycle Frequency (Fosc/2)
+
+#define BAUDRATE        115200
+#define BRGVAL          ((FCY/BAUDRATE)/16)-1
+
+// ******************************************************************************************* //
 
 // Varible used to indicate that the current configuration of the keypad has been changed,
 // and the KeypadScan() function needs to be called.
 
 volatile char scanKeypad;
+volatile long counter;
 
 // ******************************************************************************************* //
 // Type definition used in main for a switch statement
@@ -45,6 +58,7 @@ typedef enum stateTypeEnum {
     Delay,
     FirstStar,
     EnterProgramMode,
+    PrintCharInProgMode,
     VerifyNumDigits,
     PrintInvalid,
     PrintValid
@@ -54,8 +68,29 @@ volatile stateType state = EnterAndWait;
 
 // ******************************************************************************************* //
 
+void Delay2s(){
+    TMR2 = 0;
+    IFS0bits.T3IF = 0;
+    T2CONbits.TON = 1;
+
+    while(IFS0bits.T3IF == 0);
+    return;
+}
+
 int main(void)
 {
+        TMR2 = 0;
+        TMR3 = 0;
+        PR2 = 49664;
+        PR3 = 1;
+        IFS0bits.T3IF = 0;
+        IEC0bits.T3IE = 1;
+        T2CONbits.T32 = 1;
+        T2CONbits.TON = 0;
+        T2CONbits.TCKPS0 = 1;
+        T2CONbits.TCKPS1 = 1;
+
+
 	char key;                                       //Holds the key pressed or -1
         char pwdDB[4][4] = {{'1','2','3','4'},          //Password Database and Default pw
                             {NULL, NULL, NULL, NULL},
@@ -95,9 +130,21 @@ int main(void)
                             state = PrintCharacter;
                         }
                         else if (key == "#") {
+                            LCDMoveCursor(1,digitCount);
+                            LCDPrintChar("#");
+                            digitCount = 0;
+                            state = PrintBad;
+                        }
+                        else if (key == "*" && digitCount > 1) {
+                            LCDMoveCursor(1,digitCount);
+                            LCDPrintChar("#");
+                            digitCount = 0;
                             state = PrintBad;
                         }
                         else if (key == "*") {
+                            LCDMoveCursor(1,0);
+                            LCDPrintChar("*");
+                            digitCount++;
                             state = FirstStar;
                         }
                         break;
@@ -137,14 +184,62 @@ int main(void)
                         state = Delay;
                         break;
                     case PrintBad:
+                        LCDClear();
+                        LCDMoveCursor(0,0);
+                        LCDPrintString("Bad");
+                        state = Delay;
                         break;
                     case Delay:
+                        Delay2s();
                         break;
                     case FirstStar:
+                        if (key == '*') {
+                            LCDMoveCursor(1,digitCount);
+                            LCDPrintChar('*');
+                            digitCount = 0;
+                            state = EnterProgramMode;
+                        }
+                        else {
+                            digitCount = 0;
+                            state = PrintBad;
+                        }
                         break;
                     case EnterProgramMode:
+                        if (key == '#') {
+                            digitCount = 0;
+                            state = VerifyNumDigits;
+                        }
+                        if (key == '*') {
+                            LCDClear();
+                            digitCount = 0;
+                            state = PrintInvalid;
+                        }
+                        else if (key != -1) {
+                            userPwd[digitCount] = key;
+                            LCDMoveCursor(1,digitCount);
+                            state = PrintCharInProgMode;
+                        }
+                        break;
+                    case PrintCharInProgMode:
+                        LCDPrintChar(key);
+                        digitCount++;
+                        if (digitCount < 3) {
+                            state = EnterProgramMode;
+                        }
+                        else {
+                            digitCount = 0;
+                            state = VerifyNumDigits;
+                        }
                         break;
                     case VerifyNumDigits:
+                        for (i = 0; i < 4; i++) {
+                            if (userPwd[i] == NULL && userPwd != '#' && userPwd != '*') {
+                                continue;
+                            }
+                            else {
+                                break;
+                            }
+                        }
                         break;
                     case PrintInvalid:
                         break;
@@ -162,6 +257,24 @@ int main(void)
 		}		
 	}
 	return 0;
+}
+
+// ******************************************************************************************* //
+// Defines an interrupt service routine that will execute whenever Timer 1's
+// count reaches the specfied period value defined within the PR1 register.
+//
+//     _ISR and _ISRFAST are macros for specifying interrupts that
+//     automatically inserts the proper interrupt into the interrupt vector
+//     table
+//
+//     _T1Interrupt is a macro for specifying the interrupt for Timer 1
+//
+// The functionality defined in an interrupt should be a minimal as possible
+// to ensure additional interrupts can be processed.
+void _ISR _T3Interrupt(void)
+{
+	IFS0bits.T3IF = 0;                                          //Clear Timer1 Flag
+        counter++;
 }
 
 // ******************************************************************************************* //
