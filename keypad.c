@@ -6,9 +6,9 @@
 // ******************************************************************************************* //
 
 void KeypadInitialize() {
-	
-	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This 
-	// configuration should ensure that if any key is pressed, a change notification interrupt 
+
+	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This
+	// configuration should ensure that if any key is pressed, a change notification interrupt
 	// will be generated.
 
         //Configure data direction
@@ -21,10 +21,23 @@ void KeypadInitialize() {
         TRISBbits.TRISB11   = 0;
 
         //Set output high initially.
+<<<<<<< HEAD
+        LATB = (LATB & 0xF0FF) | 0x0000;
+        //-------------------------------------------------------------------
+//////////// 1111 0001 1111 1111 //Why not 0xF0FF? to put output 8 also "0"?
+        //-------------------------------------------------------------------
+
+        //Default pins to digital where neccessary.
+        AD1PCFGbits.PCFG4   = 1;
+        //-------------------------------------------------------------------
+////////////AD1PCFGbits.PCFG4   = 1; //RB2
+        //-------------------------------------------------------------------
+=======
         LATB = (LATB & 0xF1FF) | 0x0000;
 
         //Default pins to digital where neccessary.
         AD1PCFGbits.PCFG2   = 1;
+>>>>>>> 1f4adb0692bcc1fc21d648b6dcf8fde97fae71d9
 
         //Enable Open Drain Configuration for neccessary pins.
         ODCBbits.ODB8       = 1;
@@ -47,22 +60,22 @@ void KeypadInitialize() {
 
 char KeypadScan() {
 	char key = -1;
-	
-	
-	// TODO: Implement the keypad scanning procedure to detect if exactly one button of the 
+
+
+	// TODO: Implement the keypad scanning procedure to detect if exactly one button of the
 	// keypad is pressed. The function should return:
 	//
 	//      -1         : Return -1 if no keys are pressed.
-	//      '0' - '9'  : Return the ASCII character '0' to '9' if one of the 
+	//      '0' - '9'  : Return the ASCII character '0' to '9' if one of the
 	//                   numeric (0 - 9) keys are pressed.
-	//      '#'        : Return the ASCII character '#' if the # key is pressed. 
-	//      '*'        : Return the ASCII character '*' if the * key is pressed. 
+	//      '#'        : Return the ASCII character '#' if the # key is pressed.
+	//      '*'        : Return the ASCII character '*' if the * key is pressed.
 	//       -1        : Return -1 if more than one key is pressed simultaneously.
-	// Notes: 
-	//        1. Only valid inputs should be allowed by the user such that all invalid inputs 
+	// Notes:
+	//        1. Only valid inputs should be allowed by the user such that all invalid inputs
 	//           are ignored until a valid input is detected.
 	//        2. The user must release all keys of the keypad before the following key press
-	//           is processed. This is to prevent invalid keypress from being processed if the 
+	//           is processed. This is to prevent invalid keypress from being processed if the
 	//           users presses multiple keys simultaneously.
 	//
 
@@ -70,13 +83,27 @@ char KeypadScan() {
         int j = 0;
         int numRows = 4;
         int numCols = 3;
+<<<<<<< HEAD
+        char keys[4][3] ={
+ //       char keys[3][4] = {
+=======
         char keys[3][4] = {
+>>>>>>> 1f4adb0692bcc1fc21d648b6dcf8fde97fae71d9
                             {'1','2','3'},
                             {'4','5','6'},
                             {'7','8','9'},
                             {'#','0','*'}
                             };
+<<<<<<< HEAD
+
+        int erro = 0;
+
+       // long groundedBits = 0xF7FF;
+        long groundedBits = 0xFEFF; //(In order to begin in RB8 (or change the wires fisically))
+
+=======
         long groundedBits = 0xF7FF;
+>>>>>>> 1f4adb0692bcc1fc21d648b6dcf8fde97fae71d9
 
         // The outer loop will represent the four rows of the keypad
         for (i = 0; i < numRows; i++) {
@@ -100,16 +127,108 @@ char KeypadScan() {
             // changed.
             LATB = (LATB & 0xF0FF) | (groundedBits & 0x0F00);
 
+<<<<<<< HEAD
+            
+
+
+            // The inner loop represents the three columns of the keypad
+          //  for (j = 0; j < numCols; j++) {
+
+                // The following ties the column to its input pin
+              //  switch (i) {
+=======
             // The inner loop represents the three columns of the keypad
             for (j = 0; j < numCols; j++) {
 
                 // The following ties the column to its input pin
                 switch (j) {
+>>>>>>> 1f4adb0692bcc1fc21d648b6dcf8fde97fae71d9
                     // If we are scanning the first column we want
                     // to know if RB2 equals 0. If so we know that
                     // the button on this row and this column was
                     // pressed. We will return that key which is found
                     // in the keys array.
+<<<<<<< HEAD
+                  //  case 0:
+                        if(PORTBbits.RB2 == 0 && key != -1) {
+                            erro = 1;
+                        }
+                        if(PORTBbits.RB2 == 0 && key == -1) {
+                            key == keys[i][0];
+                        }
+                        if(PORTBbits.RB6 == 0 && key != -1) {
+                            erro = 1;
+                        }
+                        if(PORTBbits.RB6 == 0 && key == -1) {
+                            key == keys[i][1];
+                        }
+                        if(PORTBbits.RB7 == 0 && key != -1) {
+                            erro = 1;
+                        }
+                        if(PORTBbits.RB7 == 0 && key == -1) {
+                            key == keys[i][2];
+                        }
+                      //  break;
+                    // When scanning the second column we want to know
+                    // if RB6 equals 0
+//                    case 1:
+//                        if(PORTBbits.RB2 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB2 == 0 && key == -1) {
+//                            key == keys[i][0];
+//                        }
+//                        if(PORTBbits.RB6 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB6 == 0 && key == -1) {
+//                            key == keys[i][1];
+//                        }
+//                        if(PORTBbits.RB7 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB7 == 0 && key == -1) {
+//                            key == keys[i][2];
+//                        }
+//                        break;
+//                    // When scanning the third column we want to know
+//                    // if RB7 equals 0
+//                    case 2:
+//                        if(PORTBbits.RB2 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB2 == 0 && key == -1) {
+//                            key == keys[i][0];
+//                        }
+//                        if(PORTBbits.RB6 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB6 == 0 && key == -1) {
+//                            key == keys[i][1];
+//                        }
+//                        if(PORTBbits.RB7 == 0 && key != -1) {
+//                            erro = 1;
+//                        }
+//                        if(PORTBbits.RB7 == 0 && key == -1) {
+//                            key == keys[i][2];
+//                        }
+//                        break;
+                }
+            
+            // Shift grounded bits to the left so that
+            // the next row will be scanned in the next loop.
+          //  groundedBits = groundedBits >> 1;
+            groundedBits = groundedBits << 1;
+        
+
+        if(erro == 0){
+            return key;
+        }
+        if(erro == 1){
+            key = -1;
+            return key;
+        }
+=======
                     case 0:
                         if(PORTBbits.RB2 == 0) {
                             key == keys[i][j];
@@ -137,6 +256,7 @@ char KeypadScan() {
         }
 
 	return key;
+>>>>>>> 1f4adb0692bcc1fc21d648b6dcf8fde97fae71d9
 }
 
 // ******************************************************************************************* //
