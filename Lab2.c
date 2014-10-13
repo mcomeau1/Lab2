@@ -182,12 +182,20 @@ int main(void)
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Good");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case PrintBad:
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Bad");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case Delay:
@@ -256,24 +264,23 @@ int main(void)
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Invalid");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
                     case PrintValid:
                         LCDClear();
                         LCDMoveCursor(0,0);
                         LCDPrintString("Valid");
+                        for (i = 0; i < digitCount; i++) {
+                            userPwd[i] = NULL;
+                        }
+                        digitCount = 0;
                         state = Delay;
                         break;
-                }
-
-		if( scanKeypad == 1 ) {
-			key = KeypadScan();
-			if( key != -1 ) {
-				LCDMoveCursor(0,0);		
-				LCDPrintChar(key);
-			}
-			scanKeypad = 0;
-		}		
+                }		
 	}
 	return 0;
 }
