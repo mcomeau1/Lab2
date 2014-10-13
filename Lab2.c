@@ -98,6 +98,7 @@ int main(void)
                             {NULL, NULL, NULL, NULL}
                             };
         char userPwd[4] = {NULL, NULL, NULL, NULL};     //Holds the password the user
+        int pwdNumDigits = 0;
         int i = 0;                                      //Loop variable
         int j = 0;                                      //Need two loop variables for pwdDB
         int match = 0;                                  //1 -> pwd found 0 -> pwd not found
@@ -234,16 +235,34 @@ int main(void)
                     case VerifyNumDigits:
                         for (i = 0; i < 4; i++) {
                             if (userPwd[i] == NULL && userPwd != '#' && userPwd != '*') {
-                                continue;
+                                pwdNumDigits++;
                             }
-                            else {
-                                break;
+                        }
+                        if (pwdNumDigits == 4) {
+                            for (i = 0; i < 4; i++) {
+                                if (pwdDB[i][0] != NULL) {
+                                    for (j = 0; j < 4; j++) {
+                                        pwdDB[i][j] = userPwd[j];
+                                    }
+                                }
                             }
+                            state = PrintValid;
+                        }
+                        else {
+                            state = PrintInvalid;
                         }
                         break;
                     case PrintInvalid:
+                        LCDClear();
+                        LCDMoveCursor(0,0);
+                        LCDPrintString("Invalid");
+                        state = Delay;
                         break;
                     case PrintValid:
+                        LCDClear();
+                        LCDMoveCursor(0,0);
+                        LCDPrintString("Valid");
+                        state = Delay;
                         break;
                 }
 
