@@ -2,58 +2,45 @@
 
 #include "p24fj64ga002.h"
 #include "keypad.h"
+#include <string.h>
 
 // ******************************************************************************************* //
 
 void KeypadInitialize() {
+    TRISAbits.TRISA0 = 1;
+    TRISAbits.TRISA1 = 1;
+    TRISBbits.TRISB11 = 1;
+    TRISBbits.TRISB2 = 0;
+    TRISBbits.TRISB3 = 0;
+    TRISBbits.TRISB5 = 0;
+    TRISBbits.TRISB8 = 0;
 
-	// TODO: Configure IOs and Change Notificaiton interrupt for keypad scanning. This
-	// configuration should ensure that if any key is pressed, a change notification interrupt
-	// will be generated.
+    AD1PCFGbits.PCFG0 = 1;
+    AD1PCFGbits.PCFG1 = 1;
 
-        //Configure data direction
-        TRISBbits.TRISB2    = 1;
-        TRISBbits.TRISB6    = 1;
-        TRISBbits.TRISB7    = 1;
-        TRISBbits.TRISB8    = 0;
-        TRISBbits.TRISB5    = 0;
-        TRISBbits.TRISB10   = 0;
-        TRISBbits.TRISB11   = 0;
+    ODCBbits.ODB2 = 1;
+    ODCBbits.ODB3 = 1;
+    ODCBbits.ODB5 = 1;
+    ODCBbits.ODB8 = 1;
 
-        //Set output high initially.
-        LATB = (LATB & 0xF0FF) | 0x0000;
-        //-------------------------------------------------------------------
-        // 1111 0001 1111 1111 //Why not 0xF0FF? to put output 8 also "0"?
-        //-------------------------------------------------------------------
+    CNPU1bits.CN3PUE = 1;
+    CNPU1bits.CN2PUE = 1;
+    CNPU1bits.CN15PUE = 1;
 
-        //Default pins to digital where neccessary.
-        AD1PCFGbits.PCFG4   = 1; //RB2
+    CNEN1bits.CN3IE = 1;
+    CNEN1bits.CN2IE = 1;
+    CNEN1bits.CN15IE = 1;
 
-        //-------------------------------------------------------------------
-
-        //Enable Open Drain Configuration for neccessary pins.
-        ODCBbits.ODB8       = 1;
-        ODCBbits.ODB5       = 1;
-        ODCBbits.ODB10      = 1;
-        ODCBbits.ODB11      = 1;
-
-        //Enable the change notification for inputs
-        CNEN1bits.CN6IE     = 1;
-        CNEN2bits.CN24IE    = 1;
-        CNEN2bits.CN27IE    = 1;
-
-        //Enable the internal pullup resistor for inputs
-        CNPU1bits.CN6PUE    = 1;
-        CNPU2bits.CN24PUE   = 1;
-        CNPU2bits.CN27PUE   = 1;
+ 
 }
 
 // ******************************************************************************************* //
 
 char KeypadScan() {
 	char key = -1;
+        int cnt = 0;
 
-	// TODO: Implement the keypad scanning procedure to detect if exactly one button of the
+	// Implement the keypad scanning procedure to detect if exactly one button of the
 	// keypad is pressed. The function should return:
 	//
 	//      -1         : Return -1 if no keys are pressed.
@@ -69,79 +56,129 @@ char KeypadScan() {
 	//           is processed. This is to prevent invalid keypress from being processed if the
 	//           users presses multiple keys simultaneously.
 	//
+	
+	long shift = 0xFF7F;
+        while(key == -1)
+        {
 
-        int i = 0;
-        int j = 0;
-        int numRows = 4;
-        char keys[4][3] = {
-                            {'1','2','3'},
-                            {'4','5','6'},
-                            {'7','8','9'},
-                            {'#','0','*'}
-                            };
+            /*
+             * I'll be checking the rows backwards because it was easier
+             * given the way I decided to implement bit shifting.
+             *
+             * 0xFF69 is a bit mask that ensures we only change bits
+             * RB2, RB3, RB5, and RB8
+             *
+             * 0x0096 is a bit mask that changes everything but the
+             * desired bits (2, 3, 4, and 5) in "shift" to zero. This is
+             * done so that when we "or" it with LATB it only changes the
+             * desired bits
+             *
+             * shift only contains one 0 that is shifted to the correct
+             * place after before checking the next row.
+             * 
+             */						// | RB2 | RB3 | RB5 | RB8 |
+            LATB = (LATB & 0xFF69) | (shift & 0x0096);	// |  1  |  1  |  1  |  0  |
+			
+			
+			
+            if(LATBbits.LATB8 == 0 && PORTAbits.RA0 == 0)
+            {
+                key = '*';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB8 == 0 && PORTAbits.RA1 == 0)
+            {
+                key = '0';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB8 == 0 && PORTBbits.RB11 == 0)
+            {
+                key = '#';
+                cnt = cnt + 1;
+            }
+			
+			
+			
+            shift = shift >> 3;				// | RB2 | RB3 | RB5 | RB8 |
+            LATB = (LATB & 0xFF69) | (shift & 0x0096);	// |  1  |  1  |  0  |  1  |
+			
+			
+			
+            if(LATBbits.LATB5 == 0 && PORTAbits.RA0 == 0)
+            {
+                key = '7';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB5 == 0 && PORTAbits.RA1 == 0)
+            {
+                key = '8';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB5 == 0 && PORTBbits.RB11 == 0)
+            {
+                key = '9';
+                cnt = cnt + 1;
+            }
+			
+			
+			
+            shift = shift >> 2;				// | RB2 | RB3 | RB5 | RB8 |
+            LATB = (LATB & 0xFF69) | (shift & 0x0096);	// |  1  |  0  |  1  |  1  |
+			
+			
+			
+            if(LATBbits.LATB3 == 0 && PORTAbits.RA0 == 0)
+            {
+                key = '4';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB3 == 0 && PORTAbits.RA1 == 0)
+            {
+                key = '5';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB3 == 0 && PORTBbits.RB11 == 0)
+            {
+                key = '6';
+                cnt = cnt + 1;
+            }
+			
+			
+			
+            shift = shift >> 1;				// | RB2 | RB3 | RB5 | RB8 |
+            LATB = (LATB & 0xFF69) | (shift & 0x0096);	// |  0  |  1  |  1  |  1  |
+			
+			
+			
+            if(LATBbits.LATB2 == 0 && PORTAbits.RA0 == 0)
+            {
+                key = '1';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB2 == 0 && PORTAbits.RA1 == 0)
+            {
+                key = '2';
+                cnt = cnt + 1;
+            }
+            if(LATBbits.LATB2 == 0 && PORTBbits.RB11 == 0)
+            {
+                key = '3';
+                cnt = cnt + 1;
+            }
+			
+            shift = 0xFF7F;     // Reset shift
 
-        int erro = 0;
-
-        long groundedBits = 0xFEFF; //(In order to begin in RB8 (or change the wires fisically))
-
-        // The outer loop will represent the four rows of the keypad
-        for (i = 0; i < numRows; i++) {
-
-            // When the row of the keypad is grounded pressing
-            // a button in that row will pull the input pin
-            // from high to low, thus indicating a button press.
-            //
-            // To ground the row I've created a "long" variable
-            // named groundedBits which has a 1 for every bit
-            // accept for the pin that we want grounded. I've
-            // initialized groundedBits to 1111 0111 1111 1111
-            // so that RB11 is grounded. at the end of each loop
-            // the bits will be shifted to the right so that RB10,
-            // RB5, and RB8 will be grounded in that order.
-            //
-            // You can't just "or" grounded bits with LATB though
-            // without causing changes to the other PORTB pins.
-            // To fixed this I applied masks to both LATB and
-            // grounded bits so that only the desired pins are
-            // changed.
-            LATB = (LATB & 0xF0FF) | (groundedBits & 0x0F00);
-
-            // If we are scanning the first column we want
-            // to know if RB2 equals 0. If so we know that
-            // the button on this row and this column was
-            // pressed. We will return that key which is found
-            // in the keys array.
-            if(PORTBbits.RB2 == 0 && key != -1) {
-                erro = 1;
-            }
-            if(PORTBbits.RB2 == 0 && key == -1) {
-                key == keys[i][0];
-            }
-            if(PORTBbits.RB6 == 0 && key != -1) {
-                erro = 1;
-            }
-            if(PORTBbits.RB6 == 0 && key == -1) {
-                key == keys[i][1];
-            }
-            if(PORTBbits.RB7 == 0 && key != -1) {
-                erro = 1;
-            }
-            if(PORTBbits.RB7 == 0 && key == -1) {
-                key == keys[i][2];
-            }
         }
-            
-        // Shift grounded bits to the left so that
-        // the next row will be scanned in the next loop.
-        groundedBits = groundedBits << 1;
-        
-        if(erro == 0){
-            return key;
-        }
-        if(erro == 1){
+        LATBbits.LATB2 = 0;
+        LATBbits.LATB3 = 0;
+        LATBbits.LATB5 = 0;
+        LATBbits.LATB8 = 0;
+        if(cnt >= 2)
+        {
             key = -1;
-            return key;
         }
+	return key;
 }
+
 
 // ******************************************************************************************* //
