@@ -61,7 +61,7 @@ void DelayUs(unsigned int usDelay) {
         IFS0bits.T2IF = 0;
         while(IFS0bits.T2IF == 0);
         return;
-        
+
 }
 
 // ******************************************************************************************* //
@@ -129,7 +129,7 @@ void LCDInitialize(void) {
 	LCD_TRIS_D4 = 0;	// D4
 	LCD_TRIS_RS = 0;	// RS
 	LCD_TRIS_E  = 0;	// E
-        
+
         LCD_D = (LCD_D & 0x0FFF) | 0x0000;
         LCD_RS = 0;
 	LCD_E = 0;

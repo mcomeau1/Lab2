@@ -45,8 +45,8 @@ int main(void)
         TMR4 = 0;
         PR4 = 50464;           //2s
         PR5 = 1;
-        IFS1bits.T5IF = 0;
-        IEC1bits.T5IE = 1;
+        //IFS1bits.T5IF = 0;
+        //IEC1bits.T5IE = 1;
         T4CON = 0x8030;
         T4CONbits.T32 = 1;
 	char key;
@@ -139,11 +139,11 @@ int main(void)
                             state = 7;
                             //state: print bad for 2 sec
                         }
-                        else if(key == '*')
+                        /*else if(key == '*')
                         {
                             state = 4;
                             //state: waiting for another '*' to go to Set Mode
-                        }
+                        }*/
                         else
                         {
                             temp[1] = key;
@@ -168,11 +168,11 @@ int main(void)
                             state = 7;
                             //state: print bad for 2 sec
                         }
-                        else if(key == '*')
+                         /*else if(key == '*')
                         {
                             state = 4;
                             //state: waiting for another '*' to go to Set Mode
-                        }
+                        }*/
                         else
                         {
                             temp[2] = key;
@@ -197,11 +197,11 @@ int main(void)
                             state = 7;
                             //state: print bad for 2 sec
                         }
-                        else if(key == '*')
+                         /*else if(key == '*')
                         {
                             state = 4;
                             //state: waiting for another '*' to go to Set Mode
-                        }
+                        }*/
                         else
                         {
 
@@ -266,6 +266,7 @@ int main(void)
 
                 case 6:
                     LCDClear();
+                    IFS1bits.T5IF = 0;
                     LCDMoveCursor(0,0);
                     LCDPrintString("Good    ");
                     TMR4 = 0;
@@ -277,6 +278,7 @@ int main(void)
 
                 case 7:
                     LCDClear();
+                    IFS1bits.T5IF = 0;
                     LCDMoveCursor(0,0);
                     LCDPrintString("Bad     ");
                     LCDPrintString(count);
@@ -357,6 +359,7 @@ int main(void)
                         //store new password into the code
                         index++;
                     }
+                    IFS1bits.T5IF = 0;
                     TMR4 = 0;
                     TMR5 = 0;
                     while(IFS1bits.T5IF == 0);
@@ -393,8 +396,8 @@ void __attribute__((interrupt)) _CNInterrupt(void)
 
 // ******************************************************************************************* //
 
-void __attribute__((interrupt,auto_psv)) _T5Interrupt(void){
+/*void __attribute__((interrupt,auto_psv)) _T5Interrupt(void){
     IFS1bits.T5IF = 0;
     TMR4 = 0;
     TMR5 = 0;
-}
+}*/
