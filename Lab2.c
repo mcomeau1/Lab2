@@ -6,18 +6,18 @@
 #include "p24fj64ga002.h"
 #include <stdio.h>
 #include "lcd.h"
-#include "keypad.h"
+
 
 // ******************************************************************************************* //
-// Configuration bits for CONFIG1 settings. 
+// Configuration bits for CONFIG1 settings.
 //
 // Make sure "Configuration Bits set in code." option is checked in MPLAB.
 //
-// These settings are appropriate for debugging the PIC microcontroller. If you need to 
+// These settings are appropriate for debugging the PIC microcontroller. If you need to
 // program the PIC for standalone operation, change the COE_ON option to COE_OFF.
 
-_CONFIG1( JTAGEN_OFF & GCP_OFF & GWRP_OFF & 
-		 BKBUG_ON & COE_ON & ICS_PGx1 & 
+_CONFIG1( JTAGEN_OFF & GCP_OFF & GWRP_OFF &
+		 BKBUG_ON & COE_ON & ICS_PGx1 &
 		 FWDTEN_OFF & WINDIS_OFF & FWPSA_PR128 & WDTPS_PS32768 )
 
 // ******************************************************************************************* //
@@ -27,309 +27,374 @@ _CONFIG1( JTAGEN_OFF & GCP_OFF & GWRP_OFF &
 _CONFIG2( IESO_OFF & SOSCSEL_SOSC & WUTSEL_LEG & FNOSC_PRIPLL & FCKSM_CSDCMD & OSCIOFNC_OFF &
 		 IOL1WAY_OFF & I2C1SEL_PRI & POSCMOD_XT )
 
-// ******************************************************************************************* //
-// Define constants to be used in this program.
-
-// Defines to simply UART's baud rate generator (BRG) regiser
-// given the osicllator freqeuncy and PLLMODE.
 #define XTFREQ          7372800         	  // On-board Crystal frequency
 #define PLLMODE         4               	  // On-chip PLL setting (Fosc)
-#define FCY             (XTFREQ*PLLMODE)/2        // Instruction Cycle Frequency (Fosc/2)
-
-#define BAUDRATE        115200
-#define BRGVAL          ((FCY/BAUDRATE)/16)-1
-
+#define FCY             (XTFREQ*PLLMODE)/2    // Instruction Cycle Frequency (Fosc/2)
 // ******************************************************************************************* //
 
 // Varible used to indicate that the current configuration of the keypad has been changed,
 // and the KeypadScan() function needs to be called.
 
-volatile char scanKeypad;
+volatile int scanKeypad = 0;
 
 // ******************************************************************************************* //
-// Type definition used in main for a switch statement
-typedef enum stateTypeEnum {
-    EnterAndWait,
-    PrintCharacter,
-    CheckPassword,
-    PrintGood,
-    PrintBad,
-    Delay,
-    FirstStar,
-    EnterProgramMode,
-    PrintCharInProgMode,
-    VerifyNumDigits,
-    PrintInvalid,
-    PrintValid
-} stateType;
-
-volatile stateType state = EnterAndWait;
-
-// ******************************************************************************************* //
-
-void Delay2s(){
-    TMR2 = 0;
-    IFS0bits.T3IF = 0;
-    T2CONbits.TON = 1;
-
-    while(IFS0bits.T3IF == 0);
-    T2CONbits.TON = 0;
-    return;
-}
 
 int main(void)
 {
-        TMR2 = 0;
-        TMR3 = 0;
-        PR2 = 49664;
-        PR3 = 1;
-        IFS0bits.T3IF = 0;
-        IEC0bits.T3IE = 1;
-        T2CONbits.T32 = 1;
-        T2CONbits.TON = 0;
-        T2CONbits.TCKPS0 = 1;
-        T2CONbits.TCKPS1 = 1;
 
-
-	char key;                                       //Holds the key pressed or -1
-        char pwdDB[4][4] = {{'1','2','3','4'},          //Password Database and Default pw
-                            {NULL, NULL, NULL, NULL},
-                            {NULL, NULL, NULL, NULL},
-                            {NULL, NULL, NULL, NULL}
-                            };
-        char userPwd[4] = {NULL, NULL, NULL, NULL};     //Holds the password the user
-        int pwdNumDigits = 0;
-        int i = 0;                                      //Loop variable
-        int j = 0;                                      //Need two loop variables for pwdDB
-        int match = 0;                                  //1 -> pwd found 0 -> pwd not found
-        int numPwds = 0;                                //Tracks the number of passwords
-        int digitCount = 0;                             //Counts the number of digits entered
-	
-	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1), 
+        TMR4 = 0;
+        PR4 = 50464;           //2s
+        PR5 = 1;
+        IFS1bits.T5IF = 0;
+        IEC1bits.T5IE = 1;
+        T4CON = 0x8030;
+        T4CONbits.T32 = 1;
+	char key;
+        //key is used to receive the character or number which is from user input
+        int state = 0;
+	char code[4][4] = {{ "1234" },
+                           { "aaaa" },
+                           { "aaaa" },
+                           { "aaaa" }};
+        //code is used to store 4 different passwords
+        char temp[4] = {0, 0, 0, 0};
+        //temp is used to store user input, either character or number.
+        //comparing code if in correct form(4 digits)
+        //store into code if in Set Mode and in correct form(4 digits + '#'
+        int i = 0;
+        //used in for loop
+        int j = 0;
+        //used in for loop
+        int index = 1;
+        //index is used to keep track of code's valid passwords
+        //default is 1, because the default password is 1234
+        //In Set Mode, if user adds a new correct password, index++
+        //Example:
+        //  default:        +(4567#):       +(invalid):
+        //        1234           1234           1234
+        // index->aaaa           4567           4567
+        //        aaaa    index->aaaa           aaaa
+        //        aaaa           aaaa           aaaa
+        int valid = 1;
+        //valid is used to check the first 4 bits in temp have any '*' in Set Mode
+	int count = 0;
+        //count is used to compare temp and code bit by bit in Enter Modeused
+        IFS1bits.CNIF = 0;
+        IEC1bits.CNIE = 1;
+	// TODO: Initialize and configure IOs, LCD (using your code from Lab 1),
 	// UART (if desired for debugging), and any other configurations that are needed.
-	
+
 	LCDInitialize();
 	KeypadInitialize();
-	
+        LCDClear();
 	// TODO: Initialize scanKeypad variable.
-        scanKeypad = 0;
-	
 	while(1)
 	{
-            // TODO: Once you create the correct keypad driver (Part 1 of the lab assignment), write
-            // the C program that use both the keypad and LCD drivers to implement the 4-digit password system.
-            IFS1bits.CNIF = 0;
-            IEC1bits.CNIE = 1;
-
-            if (scanKeypad == 1) {
-
-                key = KeypadScan();
-
-                switch (state) {
-                    case EnterAndWait:
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Enter");
-                        if ((key != -1) && (key != '#') && (key != '*')) {
-                            userPwd[digitCount] = key;
-                            LCDMoveCursor(1,digitCount);
-                            state = PrintCharacter;
+            switch(state)
+            {
+            case 0:
+                //first state, waiting for the 1st number
+                //if '*' go to state 4 which is waiting for next '#' to go to Set Mode
+                //if '#' go to state 7 which print bad for 2 sec
+                LCDMoveCursor(0,0);
+		LCDPrintString("Enter   ");
+                LCDMoveCursor(1,0);
+                if( scanKeypad == 1 )
+                {
+                    key = KeypadScan();
+                    if( key != -1 )
+                    {
+                        if(key == '#')
+                        {
+                            state = 7;
+                            //state: print bad for 2 sec
                         }
-                        else if (key == '#') {
-                            LCDMoveCursor(1,digitCount);
-                            LCDPrintChar('#');
-                            digitCount = 0;
-                            state = PrintBad;
+                        else if(key == '*')
+                        {
+                            state = 4;
+                            //state: waiting for another '*' to go to Set Mode
                         }
-                        else if (key == '*' && digitCount > 1) {
-                            LCDMoveCursor(1,digitCount);
-                            LCDPrintChar('#');
-                            digitCount = 0;
-                            state = PrintBad;
+                        else
+                        {
+                            temp[0] = key;
+                            //store the 1st number into temp
+                            state = 1;
                         }
-                        else if (key == '*') {
-                            LCDMoveCursor(1,0);
-                            LCDPrintChar('*');
-                            digitCount++;
-                            state = FirstStar;
-                        }
-                        break;
-                    case PrintCharacter:
                         LCDPrintChar(key);
-                        digitCount++;
-                        if (digitCount < 3) {
-                            state = EnterAndWait;
-                        }
-                        else {
-                            digitCount = 0;
-                            state = CheckPassword;
-                        }
-                        break;
-                    case CheckPassword:
-                        for (i = 0; i < numPwds; i++) {
-                            for(j = 0; j < 4; j++) {
-                                if (pwdDB[i][j] != userPwd[j]) {
-                                    match = 0;
-                                }
-                                else {
-                                    match = 1;
-                                }
-                            }
-                        }
-                        if (match == 1) {
-                            state = PrintGood;
-                        }
-                        else {
-                            state = PrintBad;
-                        }
-                        break;
-                    case PrintGood:
-                        LCDClear();
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Good");
-                        for (i = 0; i < digitCount; i++) {
-                            userPwd[i] = NULL;
-                        }
-                        digitCount = 0;
-                        state = Delay;
-                        break;
-                    case PrintBad:
-                        LCDClear();
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Bad");
-                        for (i = 0; i < digitCount; i++) {
-                            userPwd[i] = NULL;
-                        }
-                        digitCount = 0;
-                        state = Delay;
-                        break;
-                    case Delay:
-                        Delay2s();
-                        break;
-                    case FirstStar:
-                        if (key == '*') {
-                            LCDMoveCursor(1,digitCount);
-                            LCDPrintChar('*');
-                            digitCount = 0;
-                            state = EnterProgramMode;
-                        }
-                        else {
-                            digitCount = 0;
-                            state = PrintBad;
-                        }
-                        break;
-                    case EnterProgramMode:
-                        if (key == '#') {
-                            digitCount = 0;
-                            state = VerifyNumDigits;
-                        }
-                        if (key == '*') {
-                            LCDClear();
-                            digitCount = 0;
-                            state = PrintInvalid;
-                        }
-                        else if (key != -1) {
-                            userPwd[digitCount] = key;
-                            LCDMoveCursor(1,digitCount);
-                            state = PrintCharInProgMode;
-                        }
-                        break;
-                    case PrintCharInProgMode:
-                        LCDPrintChar(key);
-                        digitCount++;
-                        if (digitCount < 3) {
-                            state = EnterProgramMode;
-                        }
-                        else {
-                            digitCount = 0;
-                            state = VerifyNumDigits;
-                        }
-                        break;
-                    case VerifyNumDigits:
-                        for (i = 0; i < 4; i++) {
-                            if (userPwd[i] == NULL && userPwd[i] != '#' && userPwd[i] != '*') {
-                                pwdNumDigits++;
-                            }
-                        }
-                        if (pwdNumDigits == 4) {
-                            for (i = 0; i < 4; i++) {
-                                if (pwdDB[i][0] != NULL) {
-                                    for (j = 0; j < 4; j++) {
-                                        pwdDB[i][j] = userPwd[j];
-                                    }
-                                }
-                            }
-                            state = PrintValid;
-                        }
-                        else {
-                            state = PrintInvalid;
-                        }
-                        break;
-                    case PrintInvalid:
-                        LCDClear();
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Invalid");
-                        for (i = 0; i < digitCount; i++) {
-                            userPwd[i] = NULL;
-                        }
-                        digitCount = 0;
-                        state = Delay;
-                        break;
-                    case PrintValid:
-                        LCDClear();
-                        LCDMoveCursor(0,0);
-                        LCDPrintString("Valid");
-                        for (i = 0; i < digitCount; i++) {
-                            userPwd[i] = NULL;
-                        }
-                        digitCount = 0;
-                        state = Delay;
-                        break;
+                    }
+                scanKeypad = 0;
                 }
+                break;
+
+            case 1:
+                //second state, waiting for the 2nd number
+                //if '*' go to state 4 which is waiting for next '#' to go to Set Mode
+                //if '#' go to state 7 which print bad for 2 sec
+                if( scanKeypad == 1 )
+                {
+                    key = KeypadScan();
+                    if( key != -1 ) {
+                        if(key == '#')
+                        {
+                            state = 7;
+                            //state: print bad for 2 sec
+                        }
+                        else if(key == '*')
+                        {
+                            state = 4;
+                            //state: waiting for another '*' to go to Set Mode
+                        }
+                        else
+                        {
+                            temp[1] = key;
+                            //store the 2nd number into temp
+                            state = 2;
+                        }
+                         LCDPrintChar(key);
+                    }
+                scanKeypad = 0;
+                }
+                break;
+            case 2:
+                //third state, waiting for the 3rd number
+                //if '*' go to state 4 which is waiting for next '#' to go to Set Mode
+                //if '#' go to state 7 which print bad for 2 sec
+                if( scanKeypad == 1 )
+                {
+                    key = KeypadScan();
+                    if( key != -1 ) {
+                        if(key == '#')
+                        {
+                            state = 7;
+                            //state: print bad for 2 sec
+                        }
+                        else if(key == '*')
+                        {
+                            state = 4;
+                            //state: waiting for another '*' to go to Set Mode
+                        }
+                        else
+                        {
+                            temp[2] = key;
+                            state = 3;
+                         }
+                       LCDPrintChar(key);
+                    }
+                scanKeypad = 0;
+                }
+                break;
+
+             case 3:
+                //4th state, waiting for the 4th number
+                //if '*' go to state 4 which is waiting for next '#' to go to Set Mode
+                //if '#' go to state 7 which print bad for 2 sec
+                if( scanKeypad == 1 )
+                {
+                    key = KeypadScan();
+                    if( key != -1 ) {
+                        if(key == '#')
+                        {
+                            state = 7;
+                            //state: print bad for 2 sec
+                        }
+                        else if(key == '*')
+                        {
+                            state = 4;
+                            //state: waiting for another '*' to go to Set Mode
+                        }
+                        else
+                        {
+
+                            temp[3] = key;
+                            state = 5;
+                        }
+                        LCDPrintChar(key);
+                    }
+                    scanKeypad = 0;
+                }
+                break;
+
+              case 4:
+                  //User Mode <-> state 4 -> Set Mode
+                  //in user mode if entered '*', state changes to 4
+                  //if user press '*' again, go to set mode
+                  //else print bad for 2 sec then go back to state 0
+                  if( scanKeypad == 1 )
+                  {
+                    key = KeypadScan();
+                    if( key != -1 ) {
+                        if(key != '*')
+                        {
+                            state = 7;
+                            //state: print bad for 2 sec
+                        }
+                        else
+                        {
+                            state = 8;
+                            //Set Mode
+                        }
+                        LCDPrintChar(key);
+                    }
+                  scanKeypad = 0;
+                  }
+                  break;
+
+              case 5:
+                  //state to compare temp(user input) with code(passwords) bit by bit
+                  for (i = 0; i < 4; i++)
+                  {
+                      count = 0;
+                      for (j = 0; j < 4; j++)
+                      {
+                          if (temp[j] == code[i][j])
+                          {
+                              count++;
+                          }
+                      }
+                      if(count == 4)
+                      {
+                          state = 6;
+                          //state: print good for 2 sec
+                      }
+                   }
+                  if(state != 6)
+                  {
+                      state = 7;
+                      //state: print bad for 2 sec
+                  }
+                   break;
+
+                case 6:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Good    ");
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);  //2 sec
+                    LCDClear();
+                    state = 0;
+                    break;
+
+                case 7:
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Bad     ");
+                    LCDPrintString(count);
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);  //2 sec
+                    LCDClear();
+                    state = 0;
+                    break;
+
+                case 8:
+                    //state: print Set Mode on top
+                    //       go to state 9 automatically
+                    LCDClear();
+                    LCDMoveCursor(0,0);
+                    LCDPrintString("Set Mode");
+                    LCDMoveCursor(1,0);
+                    state = 9;
+                    //state: let user print newpasswords
+                    break;
+
+                case 9:
+                    //state: let user print newpasswords
+                    //       will not change state until user press '#'
+                    i = 0;
+                    while(key != '#')
+                    {
+                        if( scanKeypad == 1 )
+                        {
+                            key = KeypadScan();
+                            if( key != -1 ) {
+                                LCDPrintChar(key);
+                                if(i<4)
+                                {
+                                    temp[i] = key;
+                                }
+                                //only receive first 4 digits or characters
+                                i++;
+                            }
+                        }
+                        scanKeypad = 0;
+                    }
+                    LCDMoveCursor(0,0);
+                    state = 10;
+                    break;
+
+                case 10:
+                    //state: check user inputs(store in temp) bit by bit
+                    if(i > 5)
+                    {
+                        valid = -1;
+                    }
+                    //check if user inputs more than 4 digits or characters(Ex: 12345#)
+                    for(i = 0; i < 4; i++)
+                    {
+                        if(temp[i] < '0' || temp[i] > '9')
+                        {
+                            valid = -1;
+                        }
+                        //check if user inputs has characters
+                    }
+                    state = 11;
+                    break;
+
+                case 11:
+                    //determine whether user input is valid or invalid(by variable valid)
+                    if(valid == -1)
+                    {
+                        LCDPrintString("Invalid ");
+                    }
+                    else
+                    {
+                        LCDPrintString("Valid   ");
+                        for(i = 0; i < 4; i++)
+                        {
+                            code[index][i] = temp [i];
+                        }
+                        //store new password into the code
+                        index++;
+                    }
+                    TMR4 = 0;
+                    TMR5 = 0;
+                    while(IFS1bits.T5IF == 0);
+                    LCDClear();
+                    state = 0;
+                    break;
             }
-            scanKeypad = 0;
+
 	}
 	return 0;
 }
 
 // ******************************************************************************************* //
-// Defines an interrupt service routine that will execute whenever Timer 1's
-// count reaches the specfied period value defined within the PR1 register.
-//
-//     _ISR and _ISRFAST are macros for specifying interrupts that
-//     automatically inserts the proper interrupt into the interrupt vector
-//     table
-//
-//     _T1Interrupt is a macro for specifying the interrupt for Timer 1
-//
-// The functionality defined in an interrupt should be a minimal as possible
-// to ensure additional interrupts can be processed.
-void _ISR _T3Interrupt(void)
-{
-	IFS0bits.T3IF = 0;
-}
-
-// ******************************************************************************************* //
 // Defines an interrupt service routine that will execute whenever any enable
 // input change notifcation is detected.
-// 
-//     In place of _ISR and _ISRFAST, we can directy use __attribute__((interrupt))
-//     to inform the compiler that this function is an interrupt. 
 //
-//     _CNInterrupt is a macro for specifying the interrupt for input change 
+//     In place of _ISR and _ISRFAST, we can directy use __attribute__((interrupt))
+//     to inform the compiler that this function is an interrupt.
+//
+//     _CNInterrupt is a macro for specifying the interrupt for input change
 //     notification.
 //
 // The functionality defined in an interrupt should be a minimal as possible
-// to ensure additional interrupts can be processed. 
+// to ensure additional interrupts can be processed.
 void __attribute__((interrupt)) _CNInterrupt(void)
-{	
+{
 	// TODO: Clear interrupt flag
 	IFS1bits.CNIF = 0;
-	
-	// TODO: Detect if *any* key of the keypad is *pressed*, update scanKeypad
+        scanKeypad = 1;
+
+	// TODO: Detect if *any* key of the keypad is *pressed*, and update scanKeypad
 	// variable to indicate keypad scanning process must be executed.
-        if ((PORTBbits.RB2 == 0) || (PORTBbits.RB6 == 0) || (PORTBbits.RB7 == 0)) {
-            scanKeypad = 1;
-        }
 }
 
 // ******************************************************************************************* //
+
+void __attribute__((interrupt,auto_psv)) _T5Interrupt(void){
+    IFS1bits.T5IF = 0;
+    TMR4 = 0;
+    TMR5 = 0;
+}
